@@ -12,7 +12,7 @@
     ─ 決議事項
     ─ 主席行動指示
     ─ 行動事項 (負責人 / 截止日期 / 優先度)
-  • 多格式輸出        (Markdown / JSON)
+  • 多格式輸出        (Markdown / JSON / PDF)
   • 支援即時錄音或匯入現有音訊
 
 使用方式:
@@ -50,11 +50,12 @@ def _try_import(module: str, pkg_hint: str = ""):
         print(f"[WARN] '{module}' 未安裝{hint}，相關功能停用。")
         return None, False
 
-_pyaudio_mod,    PYAUDIO_OK    = _try_import("pyaudio",   "pyaudio")
-_whisper_mod,    WHISPER_OK    = _try_import("whisper",   "openai-whisper")
+_pyaudio_mod,    PYAUDIO_OK    = _try_import("pyaudio",    "pyaudio")
+_whisper_mod,    WHISPER_OK    = _try_import("whisper",    "openai-whisper")
 _pyannote_mod,   PYANNOTE_OK   = _try_import("pyannote.audio", "pyannote.audio")
-_anthropic_mod,  ANTHROPIC_OK  = _try_import("anthropic", "anthropic")
-_rich_mod,       RICH_OK       = _try_import("rich",      "rich")
+_anthropic_mod,  ANTHROPIC_OK  = _try_import("anthropic",  "anthropic")
+_rich_mod,       RICH_OK       = _try_import("rich",       "rich")
+_reportlab_mod,  REPORTLAB_OK  = _try_import("reportlab",  "reportlab")
 
 if PYAUDIO_OK:
     import pyaudio  # noqa: F811
@@ -583,6 +584,247 @@ class Exporter:
         }
         return json.dumps(data, ensure_ascii=False, indent=2)
 
+    @staticmethod
+    def pdf(
+        out_path: Path,
+        title: str, meeting_type: str, date: str, duration: str,
+        speakers: Dict[str, Speaker],
+        utterances: List[Utterance],
+        minutes: Dict,
+        stats: Dict[str, float],
+    ):
+        """
+        使用 reportlab 輸出 A4 繁體中文 PDF。
+        內建 CID CJK 字型 (STSong-Light)，無需外部字型檔。
+        """
+        if not REPORTLAB_OK:
+            raise RuntimeError("需要 reportlab 才能輸出 PDF。(pip install reportlab)")
+
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.units import cm
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer,
+            Table, TableStyle, HRFlowable, PageBreak,
+        )
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+
+        # ── 字型 ──────────────────────────────────────────────────────────────
+        _FONT = "STSong-Light"
+        try:
+            pdfmetrics.registerFont(UnicodeCIDFont(_FONT))
+        except Exception:
+            pass  # already registered
+
+        # ── 顏色定義 ──────────────────────────────────────────────────────────
+        C_NAVY   = colors.HexColor("#1a2642")
+        C_BLUE   = colors.HexColor("#2c4a8c")
+        C_RED    = colors.HexColor("#c0392b")
+        C_REDBG  = colors.HexColor("#fff5f5")
+        C_STRIPE = colors.HexColor("#f0f4ff")
+        C_STRAW  = colors.HexColor("#fff8f0")
+        C_GREY   = colors.HexColor("#666666")
+        C_LGREY  = colors.HexColor("#cccccc")
+        C_LINE   = colors.HexColor("#dddddd")
+        C_ROWBG  = colors.HexColor("#f8f8f8")
+
+        # ── 段落樣式工廠 ──────────────────────────────────────────────────────
+        def _ps(name, size=10, before=0, after=4, leading=None, color=colors.black,
+                indent=0, bold=False):
+            return ParagraphStyle(
+                name,
+                fontName  = _FONT,
+                fontSize  = size,
+                spaceBefore = before,
+                spaceAfter  = after,
+                leading     = leading or size * 1.6,
+                textColor   = color,
+                leftIndent  = indent,
+                wordWrap    = "CJK",
+            )
+
+        S_TITLE  = _ps("Title",  size=20, after=6,  color=C_NAVY)
+        S_H1     = _ps("H1",     size=13, before=14, after=4, color=C_NAVY)
+        S_BODY   = _ps("Body",   size=10, after=4)
+        S_BULLET = _ps("Bullet", size=10, after=3,  indent=12)
+        S_CHAIR  = _ps("Chair",  size=10, after=0,  color=C_RED, indent=6)
+        S_META   = _ps("Meta",   size=8,  after=1,  color=C_GREY)
+        S_TS_TXT = _ps("TsTxt",  size=9,  after=4)
+
+        # ── 文件設定 ──────────────────────────────────────────────────────────
+        PAGE_W, PAGE_H = A4
+        MARGIN = 2.5 * cm
+        BODY_W = PAGE_W - 2 * MARGIN   # ~16 cm
+
+        doc = SimpleDocTemplate(
+            str(out_path),
+            pagesize     = A4,
+            leftMargin   = MARGIN,
+            rightMargin  = MARGIN,
+            topMargin    = MARGIN,
+            bottomMargin = MARGIN,
+            title        = title,
+            author       = "Meeting Recorder v2.0",
+        )
+
+        elems = []
+
+        def _hr(thick=0.5, color=C_LGREY, after=8):
+            elems.append(HRFlowable(
+                width=f"100%", thickness=thick, color=color, spaceAfter=after
+            ))
+
+        def _section(text):
+            elems.append(Spacer(1, 6))
+            elems.append(Paragraph(text, S_H1))
+            _hr(thick=1.2, color=C_BLUE, after=6)
+
+        def _tbl_style(header_color=C_NAVY, stripe=C_STRIPE, has_header=True):
+            cmds = [
+                ("FONTNAME",  (0, 0), (-1, -1), _FONT),
+                ("FONTSIZE",  (0, 0), (-1, -1), 9),
+                ("VALIGN",    (0, 0), (-1, -1), "MIDDLE"),
+                ("PADDING",   (0, 0), (-1, -1), 5),
+                ("GRID",      (0, 0), (-1, -1), 0.3, C_LINE),
+                ("WORDWRAP",  (0, 0), (-1, -1), "CJK"),
+            ]
+            if has_header:
+                cmds += [
+                    ("BACKGROUND", (0, 0), (-1, 0), header_color),
+                    ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+                    ("FONTSIZE",   (0, 0), (-1, 0), 9),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1),
+                     [colors.white, stripe]),
+                ]
+            else:
+                cmds += [
+                    ("ROWBACKGROUNDS", (0, 0), (-1, -1),
+                     [C_ROWBG, colors.white]),
+                    ("TEXTCOLOR", (0, 0), (0, -1), C_GREY),
+                ]
+            return TableStyle(cmds)
+
+        # ── 標題區 ────────────────────────────────────────────────────────────
+        elems.append(Paragraph(title, S_TITLE))
+        _hr(thick=2, color=C_NAVY, after=10)
+
+        # 會議資訊表
+        info_rows = [
+            ["類型", meeting_type],
+            ["日期", date],
+            ["時長", duration],
+            ["記錄生成", datetime.datetime.now().strftime("%Y-%m-%d %H:%M")],
+        ]
+        info_tbl = Table(info_rows, colWidths=[3 * cm, BODY_W - 3 * cm])
+        info_tbl.setStyle(_tbl_style(has_header=False))
+        elems.append(info_tbl)
+
+        # ── 與會者 ────────────────────────────────────────────────────────────
+        _section("與會者")
+        total_speech = sum(stats.values()) or 1
+        att_rows = [["姓名", "角色", "發言時長", "佔比"]]
+        for s in speakers.values():
+            dur = stats.get(s.id, 0)
+            pct = dur / total_speech * 100
+            star = " ★" if s.role == SpeakerRole.CHAIR else ""
+            att_rows.append([
+                f"{s.name}{star}",
+                s.role.value,
+                _format_duration(dur),
+                f"{pct:.1f}%",
+            ])
+        att_tbl = Table(
+            att_rows,
+            colWidths=[4 * cm, 3.5 * cm, 3.5 * cm, 2 * cm],
+        )
+        att_tbl.setStyle(_tbl_style())
+        elems.append(att_tbl)
+
+        # ── 議程 ──────────────────────────────────────────────────────────────
+        if minutes.get("agenda_items"):
+            _section("議程")
+            for i, item in enumerate(minutes["agenda_items"], 1):
+                elems.append(Paragraph(f"{i}.  {item}", S_BULLET))
+
+        # ── 討論摘要 ──────────────────────────────────────────────────────────
+        if minutes.get("discussion_summary"):
+            _section("討論摘要")
+            elems.append(Paragraph(minutes["discussion_summary"], S_BODY))
+
+        # ── 重點摘要 ──────────────────────────────────────────────────────────
+        if minutes.get("key_highlights"):
+            _section("重點摘要")
+            for h in minutes["key_highlights"]:
+                elems.append(Paragraph(f"•  {h}", S_BULLET))
+
+        # ── 決議事項 ──────────────────────────────────────────────────────────
+        if minutes.get("key_decisions"):
+            _section("決議事項")
+            for d in minutes["key_decisions"]:
+                elems.append(Paragraph(f"☐  {d}", S_BULLET))
+
+        # ── 主席指示（紅框高亮） ─────────────────────────────────────────────
+        if minutes.get("chair_directives"):
+            _section("主席指示 ★")
+            for d in minutes["chair_directives"]:
+                inner = Table(
+                    [[Paragraph(f"▸  {d}", S_CHAIR)]],
+                    colWidths=[BODY_W],
+                )
+                inner.setStyle(TableStyle([
+                    ("FONTNAME",      (0, 0), (-1, -1), _FONT),
+                    ("BACKGROUND",    (0, 0), (-1, -1), C_REDBG),
+                    ("LEFTPADDING",   (0, 0), (-1, -1), 12),
+                    ("RIGHTPADDING",  (0, 0), (-1, -1), 12),
+                    ("TOPPADDING",    (0, 0), (-1, -1), 7),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                    ("BOX",           (0, 0), (-1, -1), 1.5, C_RED),
+                ]))
+                elems.append(inner)
+                elems.append(Spacer(1, 5))
+
+        # ── 行動事項表 ────────────────────────────────────────────────────────
+        if minutes.get("action_items"):
+            _section("行動事項")
+            ai_rows = [["負責人", "行動事項", "截止日期", "優先度", "狀態"]]
+            for a in minutes["action_items"]:
+                ai_rows.append([
+                    a.get("assignee", ""),
+                    a.get("description", ""),
+                    a.get("deadline") or "—",
+                    a.get("priority", "中"),
+                    "待辦",
+                ])
+            ai_tbl = Table(
+                ai_rows,
+                colWidths=[2.5 * cm, 6.5 * cm, 2.5 * cm, 1.5 * cm, 1.5 * cm],
+                repeatRows=1,
+            )
+            ai_tbl.setStyle(_tbl_style(stripe=C_STRAW))
+            elems.append(ai_tbl)
+
+        # ── 下次會議 ──────────────────────────────────────────────────────────
+        if minutes.get("next_meeting"):
+            _section("下次會議")
+            elems.append(Paragraph(minutes["next_meeting"], S_BODY))
+
+        # ── 完整逐字稿（新頁） ────────────────────────────────────────────────
+        elems.append(PageBreak())
+        elems.append(Paragraph("完整逐字稿", S_H1))
+        _hr(thick=1.2, color=C_BLUE, after=8)
+
+        for u in utterances:
+            spk   = speakers.get(u.speaker_id)
+            label = f"{spk.name}（{spk.role.value}）" if spk else u.speaker_id
+            elems.append(Paragraph(
+                f"[{_format_ts(u.start_time)}]  {label}", S_META
+            ))
+            elems.append(Paragraph(u.text, S_TS_TXT))
+
+        doc.build(elems)
+
 
 # ── 終端摘要顯示 ───────────────────────────────────────────────────────────────
 
@@ -775,25 +1017,35 @@ class MeetingRecorder:
 
         md_path   = self.out_dir / "minutes.md"
         json_path = self.out_dir / "data.json"
+        pdf_path  = self.out_dir / "minutes.pdf"
+
+        common_args = (
+            title, mtype, date_str, duration,
+            self.role_mgr.speakers, self.utterances, minutes, stats,
+        )
 
         md_path.write_text(
-            Exporter.markdown(
-                title, mtype, date_str, duration,
-                self.role_mgr.speakers, self.utterances, minutes, stats,
-            ),
+            Exporter.markdown(*common_args),
             encoding="utf-8",
         )
         json_path.write_text(
-            Exporter.json_dump(
-                title, mtype, date_str, duration,
-                self.role_mgr.speakers, self.utterances, minutes, stats,
-            ),
+            Exporter.json_dump(*common_args),
             encoding="utf-8",
         )
+
+        pdf_ok = False
+        if REPORTLAB_OK:
+            try:
+                Exporter.pdf(pdf_path, *common_args)
+                pdf_ok = True
+            except Exception as e:
+                _print(f"[yellow]PDF 輸出失敗: {e}[/yellow]")
 
         _print(f"\n[bold green]✓ 輸出完成[/bold green]")
         _print(f"  📄 Markdown : {md_path}")
         _print(f"  📦 JSON     : {json_path}")
+        if pdf_ok:
+            _print(f"  📑 PDF      : {pdf_path}")
 
         if minutes:
             _display_summary(minutes, self.role_mgr.speakers, stats)
