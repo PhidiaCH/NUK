@@ -609,14 +609,42 @@ class Exporter:
             Table, TableStyle, HRFlowable, PageBreak,
         )
         from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
         from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 
-        # ── 字型 ──────────────────────────────────────────────────────────────
-        _FONT = "STSong-Light"
-        try:
-            pdfmetrics.registerFont(UnicodeCIDFont(_FONT))
-        except Exception:
-            pass  # already registered
+        # ── 字型（優先嵌入 TrueType，確保跨平台顯示；降級至 CID）────────────────
+        _FONT_CANDIDATES = [
+            # Linux (WenQuanYi)
+            ("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",         0),
+            ("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",       0),
+            # Linux (Noto CJK)
+            ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 1),
+            ("/usr/share/fonts/truetype/noto/NotoSansCJKtc-Regular.otf", None),
+            # macOS
+            ("/System/Library/Fonts/PingFang.ttc",                    0),
+            ("/Library/Fonts/Arial Unicode MS.ttf",                   None),
+            # Windows
+            ("C:/Windows/Fonts/msjh.ttc",                             0),
+            ("C:/Windows/Fonts/mingliu.ttc",                          0),
+        ]
+        _FONT = "CJKEmbedded"
+        _font_registered = False
+        for _path, _idx in _FONT_CANDIDATES:
+            if Path(_path).exists():
+                try:
+                    kw = {"subfontIndex": _idx} if _idx is not None else {}
+                    pdfmetrics.registerFont(TTFont(_FONT, _path, **kw))
+                    _font_registered = True
+                    break
+                except Exception:
+                    continue
+        if not _font_registered:
+            # 降級：使用內建 CID 字型（需 PDF 閱覽器具備 CJK 字型包）
+            _FONT = "STSong-Light"
+            try:
+                pdfmetrics.registerFont(UnicodeCIDFont(_FONT))
+            except Exception:
+                pass
 
         # ── 顏色定義 ──────────────────────────────────────────────────────────
         C_NAVY   = colors.HexColor("#1a2642")
@@ -730,10 +758,10 @@ class Exporter:
             pct = dur / total_speech * 100
             star = " ★" if s.role == SpeakerRole.CHAIR else ""
             att_rows.append([
-                f"{s.name}{star}",
-                s.role.value,
-                _format_duration(dur),
-                f"{pct:.1f}%",
+                Paragraph(f"{s.name}{star}", S_BODY),
+                Paragraph(s.role.value, S_BODY),
+                Paragraph(_format_duration(dur), S_BODY),
+                Paragraph(f"{pct:.1f}%", S_BODY),
             ])
         att_tbl = Table(
             att_rows,
@@ -757,13 +785,13 @@ class Exporter:
         if minutes.get("key_highlights"):
             _section("重點摘要")
             for h in minutes["key_highlights"]:
-                elems.append(Paragraph(f"•  {h}", S_BULLET))
+                elems.append(Paragraph(f"▶  {h}", S_BULLET))
 
         # ── 決議事項 ──────────────────────────────────────────────────────────
         if minutes.get("key_decisions"):
             _section("決議事項")
             for d in minutes["key_decisions"]:
-                elems.append(Paragraph(f"☐  {d}", S_BULLET))
+                elems.append(Paragraph(f"[ ]  {d}", S_BULLET))
 
         # ── 主席指示（紅框高亮） ─────────────────────────────────────────────
         if minutes.get("chair_directives"):
@@ -788,18 +816,20 @@ class Exporter:
         # ── 行動事項表 ────────────────────────────────────────────────────────
         if minutes.get("action_items"):
             _section("行動事項")
+            # 使用 Paragraph 確保長文字在儲存格內自動換行
+            _cell = lambda t: Paragraph(str(t), S_BODY)
             ai_rows = [["負責人", "行動事項", "截止日期", "優先度", "狀態"]]
             for a in minutes["action_items"]:
                 ai_rows.append([
-                    a.get("assignee", ""),
-                    a.get("description", ""),
-                    a.get("deadline") or "—",
-                    a.get("priority", "中"),
-                    "待辦",
+                    _cell(a.get("assignee", "")),
+                    _cell(a.get("description", "")),
+                    _cell(a.get("deadline") or "—"),
+                    _cell(a.get("priority", "中")),
+                    _cell("待辦"),
                 ])
             ai_tbl = Table(
                 ai_rows,
-                colWidths=[2.5 * cm, 6.5 * cm, 2.5 * cm, 1.5 * cm, 1.5 * cm],
+                colWidths=[2.5 * cm, 5.0 * cm, 4.2 * cm, 1.8 * cm, 1.5 * cm],
                 repeatRows=1,
             )
             ai_tbl.setStyle(_tbl_style(stripe=C_STRAW))
