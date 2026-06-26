@@ -45,3 +45,15 @@ VPO（Virtual Project Officer）不是聊天機器人，而是專案負責人的
 如果一次使用超過 15 分鐘還不能產出可交付內容，代表流程設計失敗，而不是使用者不會用。
 
 詳細的導入 playbook 請見 [`docs/vpo-v04-playbook.md`](docs/vpo-v04-playbook.md)。
+
+## 互動式原型
+
+已新增一個可直接開啟的單頁互動原型：[`index.html`](index.html)。它把 VPO 落地成 VP Office 可操作的幕僚工作台，包含儀表板、會議記錄產生、AR 追蹤、報告上傳、達成率圖表、升遷路線圖與團隊分工。
+
+### 本機預覽
+
+```bash
+python3 -m http.server 8000
+```
+
+啟動後打開 <http://localhost:8000/index.html>。
