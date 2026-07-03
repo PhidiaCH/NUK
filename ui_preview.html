@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ASE Low-Carbon Packaging & TEG Expert Solver - UI Preview</title>
+  <style>
+    :root {
+      --app-bg: #0b1220;
+      --panel-bg: rgba(255, 255, 255, 0.06);
+      --panel-bg-2: rgba(255, 255, 255, 0.09);
+      --stroke: rgba(255, 255, 255, 0.14);
+      --text: #f9fafb;
+      --muted: rgba(255, 255, 255, 0.66);
+      --green: #10b981;
+      --blue: #3b82f6;
+      --amber: #f59e0b;
+      --red: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 15% 0%, rgba(59,130,246,.18), transparent 60%),
+        radial-gradient(900px 500px at 85% 20%, rgba(245,158,11,.12), transparent 55%),
+        linear-gradient(180deg, var(--app-bg), var(--app-bg));
+    }
+
+    .app-shell { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+    aside {
+      padding: 24px 20px;
+      background: #0f172a;
+      border-right: 1px solid var(--stroke);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+    }
+    main { padding: 28px; }
+
+    .section-title { margin: 0 0 14px; font-size: 18px; font-weight: 900; }
+    .control-card,
+    .card {
+      border: 1px solid var(--stroke);
+      background: var(--panel-bg);
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+    }
+    .control-card label { display: block; margin: 14px 0 8px; color: var(--muted); font-size: 13px; }
+    .input-mock {
+      width: 100%;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .hero {
+      padding: 20px 24px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(135deg, rgba(59,130,246,.20), rgba(16,185,129,.13));
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .hero h1 { margin: 0 0 10px; font-size: clamp(24px, 3vw, 34px); }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: rgba(255,255,255,.82);
+      font-size: 12px;
+      margin: 4px 6px 0 0;
+    }
+
+    .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .tab {
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.07);
+      border-radius: 999px;
+      padding: 10px 14px;
+      color: rgba(255,255,255,.80);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .tab.active { background: linear-gradient(135deg, var(--green), var(--blue)); color: white; }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .metric {
+      border: 1px solid var(--stroke);
+      background: var(--panel-bg-2);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .metric small { color: var(--muted); display: block; margin-bottom: 8px; }
+    .metric strong { font-size: 24px; }
+    .metric .ok { color: var(--green); font-weight: 900; }
+
+    .button {
+      display: block;
+      width: 100%;
+      text-align: center;
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.20);
+      background: linear-gradient(135deg, var(--green), var(--blue));
+      color: white;
+      font-weight: 950;
+      text-decoration: none;
+      margin: 12px 0 18px;
+    }
+
+    .chart {
+      height: 230px;
+      display: flex;
+      align-items: end;
+      gap: 18px;
+      padding: 18px;
+      border-radius: 18px;
+      background: repeating-linear-gradient(0deg, rgba(255,255,255,.05), rgba(255,255,255,.05) 1px, transparent 1px, transparent 45px);
+      border: 1px solid var(--stroke);
+    }
+    .bar-wrap { flex: 1; text-align: center; color: var(--muted); font-size: 12px; }
+    .bar {
+      width: 100%;
+      min-height: 18px;
+      border-radius: 12px 12px 4px 4px;
+      background: linear-gradient(180deg, #60a5fa, #2563eb);
+      margin-bottom: 8px;
+      box-shadow: 0 0 24px rgba(96,165,250,.22);
+    }
+    .bar.hot { background: linear-gradient(180deg, #f87171, #ef4444); }
+    .safe-badge {
+      display: inline-block;
+      border: 1px solid var(--green);
+      background: rgba(16,185,129,.18);
+      color: var(--green);
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .app-shell { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; }
+      .grid-2, .grid-4 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside>
+      <h2 class="section-title">🎨 系統視覺設計</h2>
+      <div class="control-card">
+        <label>介面主題風格</label>
+        <div class="input-mock">深色科技藍 (Dark)</div>
+      </div>
+
+      <h2 class="section-title">🧬 晶片與封裝材料配置</h2>
+      <div class="control-card">
+        <label>晶片功耗 (W)</label><div class="input-mock">650.0</div>
+        <label>低溫冷卻液入口 Tc-in (°C)</label><div class="input-mock">25.0</div>
+        <label>工作流體類型</label><div class="input-mock">DI Water (去離子水)</div>
+        <label>TIM1 導熱率 (W/mK)</label><div class="input-mock">92.0</div>
+        <label>TEG 串聯總顆數</label><div class="input-mock">1</div>
+      </div>
+    </aside>
+
+    <main>
+      <section class="hero">
+        <h1>🛡️ ASE 日月光半導體低碳封裝與廢熱回收決策系統</h1>
+        <span class="pill">定位：ASE Packaging R&amp;D</span>
+        <span class="pill">核心目標：Tj ≤ 125.0°C</span>
+        <span class="pill">策略指標：ESG、IEEE T-CPMT、專利智財</span>
+      </section>
+
+      <nav class="tabs" aria-label="App tabs preview">
+        <span class="tab active">🚀 AI 溫控與熱電發電尋優</span>
+        <span class="tab">♻️ ESG 循環經濟價值</span>
+        <span class="tab">🧪 DOE 實驗模擬</span>
+        <span class="tab">🛡️ 專利與論文</span>
+        <span class="tab">🧭 APP 功能視窗</span>
+      </nav>
+
+      <div class="card">
+        <h2>🤖 日月光 AI 封裝結構逆向尋優系統</h2>
+        <p>在保證 <strong>Tj ≤ 125°C</strong> 的前提下，反向尋找最低能耗、最大溫差與最大 TEG 回收功率的流道結構配比。</p>
+        <a class="button" href="#">🚀 啟動結構逆向尋優演算法</a>
+      </div>
+
+      <section class="grid-2">
+        <div class="card">
+          <h3>❄️ 冷端微通道設置</h3>
+          <label>冷端流道寬度 Wc</label><div class="input-mock">0.400 mm</div>
+          <label>冷端流體流速 Uc</label><div class="input-mock">0.800 m/s</div>
+        </div>
+        <div class="card">
+          <h3>♨️ 熱端微通道設置</h3>
+          <label>熱端流道寬度 Wh</label><div class="input-mock">1.000 mm</div>
+          <label>熱端流體流速 Uh</label><div class="input-mock">0.300 m/s</div>
+        </div>
+      </section>
+
+      <h2>📊 全物理量耦合模擬結果看板 <span class="safe-badge">符合可靠度 (SAFE)</span></h2>
+      <section class="grid-4">
+        <div class="metric"><small>晶片實際 Junction Tj</small><strong>112.8 °C</strong><div class="ok">符合目標</div></div>
+        <div class="metric"><small>有效回收發電溫差 ΔT</small><strong>28.4 °C</strong></div>
+        <div class="metric"><small>TEG 模組理論效率 ηteg</small><strong>1.48%</strong></div>
+        <div class="metric"><small>單組件回收電能</small><strong>0.166 W</strong></div>
+      </section>
+
+      <div class="card">
+        <h3>半導體封裝層級溫度梯度演變曲線</h3>
+        <div class="chart" role="img" aria-label="Temperature gradient preview chart">
+          <div class="bar-wrap"><div class="bar" style="height:42px"></div>Tc-in<br>25.0°C</div>
+          <div class="bar-wrap"><div class="bar" style="height:78px"></div>Cold Plate<br>45.2°C</div>
+          <div class="bar-wrap"><div class="bar" style="height:126px"></div>Hot Plate<br>73.6°C</div>
+          <div class="bar-wrap"><div class="bar hot" style="height:158px"></div>Silicon Lid<br>86.6°C</div>
+          <div class="bar-wrap"><div class="bar hot" style="height:204px"></div>Junction<br>112.8°C</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
