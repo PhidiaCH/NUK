@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TEG 熱電發電計算器｜重建版</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#111a2d; --panel2:#17233b; --text:#eaf0ff; --muted:#9fb0cf;
+    --line:#2b3c61; --accent:#66d9ef; --accent2:#a6e22e; --warn:#ffd166; --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;background:var(--bg);color:var(--text)}
+  .wrap{max-width:1200px;margin:auto;padding:24px}
+  h1{margin:0 0 8px;font-size:28px}
+  h2{font-size:20px;margin:0 0 14px}
+  p{color:var(--muted);line-height:1.6}
+  .badge{display:inline-block;padding:4px 9px;border:1px solid var(--line);border-radius:999px;color:var(--accent);font-size:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+  input,select{width:100%;padding:10px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:15px}
+  input:focus,select:focus{outline:2px solid #2f7181}
+  button{cursor:pointer;padding:11px 16px;border:0;border-radius:9px;background:var(--accent);color:#08202b;font-weight:700}
+  button.secondary{background:#223456;color:var(--text);border:1px solid var(--line)}
+  .actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .results{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .kpi .v{font-size:21px;font-weight:800;color:var(--accent2);margin-top:4px}
+  .kpi .u{font-size:12px;color:var(--muted)}
+  .note{font-size:12px;color:var(--muted);margin-top:12px}
+  .formula{background:#0a1020;border:1px dashed var(--line);border-radius:10px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#d7e4ff;line-height:1.7}
+  canvas{width:100%;height:320px;background:#0a1020;border-radius:10px;border:1px solid var(--line)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:8px;text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  .warn{color:var(--warn)}
+  .footer{margin-top:18px;color:var(--muted);font-size:12px}
+  @media(max-width:850px){.grid{grid-template-columns:1fr}.inputs{grid-template-columns:1fr}.results{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">TEG HTML Calculator · reconstructed</span>
+  <h1>TEG 熱電發電計算器</h1>
+  <p>依目前找回的「FloTHERM → 取得熱端/冷端溫度 → ΔT → 外部電氣計算 → 負載最佳化」流程重建。此檔為重建版，不宣稱是原始舊檔。</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>1｜輸入條件</h2>
+      <div class="inputs">
+        <div>
+          <label>熱端溫度 Th (°C)</label>
+          <input id="th" type="number" step="0.1" value="85">
+        </div>
+        <div>
+          <label>冷端溫度 Tc (°C)</label>
+          <input id="tc" type="number" step="0.1" value="35">
+        </div>
+        <div>
+          <label>Seebeck 係數輸入方式</label>
+          <select id="smode">
+            <option value="module">整個模組 S_total (V/K)</option>
+            <option value="pair">每對熱電偶 S_pair (µV/K) × N</option>
+          </select>
+        </div>
+        <div>
+          <label id="slabel">S_total (V/K)</label>
+          <input id="sval" type="number" step="0.0001" value="0.05">
+        </div>
+        <div id="npairBox" style="display:none">
+          <label>熱電偶對數 N</label>
+          <input id="npair" type="number" step="1" value="127">
+        </div>
+        <div>
+          <label>TEG 內阻 Rint (Ω)</label>
+          <input id="rint" type="number" step="0.01" value="2.5">
+        </div>
+        <div>
+          <label>外部負載 Rload (Ω)</label>
+          <input id="rload" type="number" step="0.01" value="2.5">
+        </div>
+        <div>
+          <label>熱輸入 Qin (W，選填)</label>
+          <input id="qin" type="number" step="0.1" placeholder="例如 100">
+        </div>
+        <div>
+          <label>掃描最大負載 (Ω)</label>
+          <input id="rmax" type="number" step="0.1" value="20">
+        </div>
+        <div>
+          <label>掃描點數</label>
+          <input id="points" type="number" step="1" value="120">
+        </div>
+      </div>
+      <div class="actions">
+        <button onclick="calculate()">計算 / 更新曲線</button>
+        <button class="secondary" onclick="setMpp()">Rload = Rint</button>
+        <button class="secondary" onclick="downloadCSV()">匯出負載掃描 CSV</button>
+      </div>
+      <div class="note">
+        若你從 FloTHERM 匯出平均表面溫度，可直接把熱端 Th、冷端 Tc 貼入此處。
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2｜計算結果</h2>
+      <div class="results">
+        <div class="kpi"><div>ΔT</div><div class="v" id="dT">—</div><div class="u">K / °C差</div></div>
+        <div class="kpi"><div>開路電壓 Voc</div><div class="v" id="voc">—</div><div class="u">V</div></div>
+        <div class="kpi"><div>負載電流 I</div><div class="v" id="current">—</div><div class="u">A</div></div>
+        <div class="kpi"><div>負載電壓 Vload</div><div class="v" id="vload">—</div><div class="u">V</div></div>
+        <div class="kpi"><div>輸出功率 Pout</div><div class="v" id="pout">—</div><div class="u">W</div></div>
+        <div class="kpi"><div>電氣效率</div><div class="v" id="eta">—</div><div class="u">Pout / Qin</div></div>
+        <div class="kpi"><div>理論 MPP 負載</div><div class="v" id="rmpp">—</div><div class="u">Ω</div></div>
+        <div class="kpi"><div>MPP 最大功率</div><div class="v" id="pmpp">—</div><div class="u">W</div></div>
+        <div class="kpi"><div>負載匹配比</div><div class="v" id="ratio">—</div><div class="u">Rload / Rint</div></div>
+      </div>
+      <div class="formula" style="margin-top:14px">
+        ΔT = Th − Tc<br>
+        Voc = S_total × ΔT<br>
+        I = Voc / (Rint + Rload)<br>
+        Pout = I² × Rload = Voc² × Rload / (Rint + Rload)²<br>
+        Maximum Power Transfer: Rload = Rint
+      </div>
+    </section>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>3｜Pout – Rload 曲線</h2>
+      <canvas id="chart" width="900" height="420"></canvas>
+      <div class="note">綠點為理論最大功率點 MPP；藍點為目前設定的 Rload。</div>
+    </section>
+
+    <section class="card">
+      <h2>4｜負載掃描摘要</h2>
+      <table>
+        <thead><tr><th>條件</th><th>數值</th></tr></thead>
+        <tbody>
+          <tr><td>Seebeck module coefficient</td><td id="stable">—</td></tr>
+          <tr><td>溫差 ΔT</td><td id="dtTable">—</td></tr>
+          <tr><td>Rint</td><td id="riTable">—</td></tr>
+          <tr><td>目前 Rload</td><td id="rlTable">—</td></tr>
+          <tr><td>目前 Pout</td><td id="poTable">—</td></tr>
+          <tr><td>MPP Pmax</td><td id="pmTable">—</td></tr>
+        </tbody>
+      </table>
+      <p class="warn">注意：此模型是集總參數電氣模型，尚未包含溫度相依 Seebeck、Peltier heat、Joule heat、Thomson effect、接觸熱阻與材料 ZT 的完整耦合。</p>
+    </section>
+  </div>
+
+  <div class="footer">
+    TEG Calculator reconstructed from recovered project logic. For engineering validation, compare against measured IV/P–R curves and the actual TEG datasheet.
+  </div>
+</div>
+
+<script>
+let sweepData = [];
+
+function num(id, fallback=0){
+  const v = parseFloat(document.getElementById(id).value);
+  return Number.isFinite(v) ? v : fallback;
+}
+function fmt(x, d=4){
+  if(!Number.isFinite(x)) return "—";
+  const ax=Math.abs(x);
+  if(ax!==0 && (ax<1e-3 || ax>=1e4)) return x.toExponential(3);
+  return x.toFixed(d);
+}
+function totalSeebeck(){
+  const mode=document.getElementById('smode').value;
+  const s=num('sval');
+  if(mode==='module') return s;
+  const n=Math.max(1,num('npair',1));
+  return s*1e-6*n;
+}
+document.getElementById('smode').addEventListener('change',()=>{
+  const pair=document.getElementById('smode').value==='pair';
+  document.getElementById('npairBox').style.display=pair?'block':'none';
+  document.getElementById('slabel').textContent=pair?'S_pair (µV/K)':'S_total (V/K)';
+  document.getElementById('sval').value=pair?'400':'0.05';
+  calculate();
+});
+
+function calculate(){
+  const th=num('th'), tc=num('tc');
+  const dT=th-tc;
+  const S=totalSeebeck();
+  const rint=Math.max(1e-9,num('rint'));
+  const rload=Math.max(0,num('rload'));
+  const qin=num('qin',NaN);
+  const voc=S*dT;
+  const I=voc/(rint+rload);
+  const vload=I*rload;
+  const pout=I*I*rload;
+  const eta=(Number.isFinite(qin)&&qin>0)?100*pout/qin:NaN;
+  const pmpp=(voc*voc)/(4*rint);
+
+  document.getElementById('dT').textContent=fmt(dT,2);
+  document.getElementById('voc').textContent=fmt(voc,5);
+  document.getElementById('current').textContent=fmt(I,5);
+  document.getElementById('vload').textContent=fmt(vload,5);
+  document.getElementById('pout').textContent=fmt(pout,6);
+  document.getElementById('eta').textContent=Number.isFinite(eta)?fmt(eta,3)+"%":"未輸入 Qin";
+  document.getElementById('rmpp').textContent=fmt(rint,4);
+  document.getElementById('pmpp').textContent=fmt(pmpp,6);
+  document.getElementById('ratio').textContent=fmt(rload/rint,3);
+
+  document.getElementById('stable').textContent=fmt(S,7)+" V/K";
+  document.getElementById('dtTable').textContent=fmt(dT,3)+" K";
+  document.getElementById('riTable').textContent=fmt(rint,4)+" Ω";
+  document.getElementById('rlTable').textContent=fmt(rload,4)+" Ω";
+  document.getElementById('poTable').textContent=fmt(pout,7)+" W";
+  document.getElementById('pmTable').textContent=fmt(pmpp,7)+" W";
+
+  makeSweep(voc,rint,rload);
+}
+function setMpp(){
+  document.getElementById('rload').value=num('rint').toString();
+  calculate();
+}
+function makeSweep(voc,rint,currentR){
+  const rmax=Math.max(rint*2,0.01,num('rmax',20));
+  const pts=Math.max(20,Math.min(1000,Math.round(num('points',120))));
+  sweepData=[];
+  for(let i=0;i<=pts;i++){
+    const r=rmax*i/pts;
+    const p=(r===0)?0:(voc*voc*r/((rint+r)*(rint+r)));
+    sweepData.push({r,p});
+  }
+  drawChart(sweepData,rint,currentR);
+}
+function drawChart(data,rmpp,currentR){
+  const c=document.getElementById('chart'), ctx=c.getContext('2d');
+  const W=c.width,H=c.height, pad={l:70,r:24,t:24,b:55};
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0a1020';ctx.fillRect(0,0,W,H);
+  const xmax=Math.max(...data.map(x=>x.r),1);
+  const ymax=Math.max(...data.map(x=>x.p),1e-12)*1.12;
+  const X=x=>pad.l+(W-pad.l-pad.r)*x/xmax;
+  const Y=y=>H-pad.b-(H-pad.t-pad.b)*y/ymax;
+
+  ctx.strokeStyle='#2b3c61';ctx.lineWidth=1;
+  ctx.fillStyle='#9fb0cf';ctx.font='12px system-ui';
+  for(let i=0;i<=5;i++){
+    const xv=xmax*i/5, xx=X(xv);
+    ctx.beginPath();ctx.moveTo(xx,pad.t);ctx.lineTo(xx,H-pad.b);ctx.stroke();
+    ctx.fillText(xv.toFixed(1),xx-10,H-pad.b+20);
+    const yv=ymax*i/5, yy=Y(yv);
+    ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();
+    ctx.fillText(yv.toPrecision(3),8,yy+4);
+  }
+  ctx.fillText('Rload (Ω)',W/2-25,H-14);
+  ctx.save();ctx.translate(18,H/2+25);ctx.rotate(-Math.PI/2);ctx.fillText('Pout (W)',0,0);ctx.restore();
+
+  ctx.strokeStyle='#66d9ef';ctx.lineWidth=3;ctx.beginPath();
+  data.forEach((d,i)=>{i?ctx.lineTo(X(d.r),Y(d.p)):ctx.moveTo(X(d.r),Y(d.p))});
+  ctx.stroke();
+
+  const pAt=r=> vocCache()*vocCache()*r/Math.pow(num('rint')+r,2);
+  function vocCache(){ return totalSeebeck()*(num('th')-num('tc')); }
+
+  ctx.fillStyle='#a6e22e';ctx.beginPath();ctx.arc(X(rmpp),Y(pAt(rmpp)),6,0,Math.PI*2);ctx.fill();
+  if(currentR>=0 && currentR<=xmax){
+    ctx.fillStyle='#ffd166';ctx.beginPath();ctx.arc(X(currentR),Y(pAt(currentR)),6,0,Math.PI*2);ctx.fill();
+  }
+}
+function downloadCSV(){
+  if(!sweepData.length) calculate();
+  const rows=["Rload_ohm,Pout_W",...sweepData.map(d=>`${d.r},${d.p}`)];
+  const blob=new Blob([rows.join("\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="TEG_load_sweep.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+calculate();
+</script>
+</body>
+</html>
