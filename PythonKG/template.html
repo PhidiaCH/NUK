@@ -1,0 +1,445 @@
+<title>Python 知識圖譜</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: three-pane study desk — index on the left, concept map in the middle, notebook page (code + output) on the right. */
+:root {
+  --bg: #F3F5F8; --panel: #FFFFFF; --ink: #17202A; --muted: #5A6674; --line: #DAE0E7;
+  --accent: #2B63A8; --mark: #D9A520; --mark-soft: #F7E7B5;
+  --code-bg: #F6F8FB; --tok-kw: #8A3FB8; --tok-str: #2E7D4F; --tok-num: #B4561C; --tok-com: #7F8B98; --tok-fn: #2B63A8;
+  --k-root: #17202A; --k-chapter: #1F4E8C; --k-section: #4F8FD6; --k-concept: #2A9A7B;
+  --k-function: #8461C4; --k-example: #D2841A; --k-exercise: #C4456A;
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E1319; --panel: #151C24; --ink: #E3E8EE; --muted: #93A0AE; --line: #253140;
+  --accent: #74A6E8; --mark: #F0C24B; --mark-soft: #4A3D14;
+  --code-bg: #10161D; --tok-kw: #C99BEB; --tok-str: #7FCB9A; --tok-num: #F0A46A; --tok-com: #6E7C8A; --tok-fn: #8DB8EE;
+  --k-root: #E3E8EE; --k-chapter: #74A6E8; --k-section: #9CC2F0; --k-concept: #4CC4A0;
+  --k-function: #B394EA; --k-example: #F0A64A; --k-exercise: #EC7896;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0E1319; --panel: #151C24; --ink: #E3E8EE; --muted: #93A0AE; --line: #253140;
+  --accent: #74A6E8; --mark: #F0C24B; --mark-soft: #4A3D14;
+  --code-bg: #10161D; --tok-kw: #C99BEB; --tok-str: #7FCB9A; --tok-num: #F0A46A; --tok-com: #6E7C8A; --tok-fn: #8DB8EE;
+  --k-root: #E3E8EE; --k-chapter: #74A6E8; --k-section: #9CC2F0; --k-concept: #4CC4A0;
+  --k-function: #B394EA; --k-example: #F0A64A; --k-exercise: #EC7896;
+  color-scheme: dark; }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.6; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+
+.app { height: 100%; display: grid; grid-template-columns: 300px minmax(0, 1fr) 460px; grid-template-rows: auto minmax(0, 1fr); }
+header.top { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--panel); }
+header.top h1 { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: .02em; text-wrap: balance; }
+header.top h1 span { color: var(--accent); }
+header.top .sub { color: var(--muted); font-size: 13px; }
+header.top .stats { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* ---------- index pane ---------- */
+.index { border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.searchbox { padding: 14px 14px 10px; display: grid; gap: 10px; border-bottom: 1px solid var(--line); }
+.searchbox input[type="search"] { width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+.searchbox input[type="search"]::placeholder { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; font-size: 12px; cursor: pointer; color: var(--muted); }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--muted)); }
+.filter-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.results { overflow-y: auto; min-height: 0; flex: 1; padding: 6px 0 16px; }
+.results .group { padding: 10px 14px 4px; font-size: 11px; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.result { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%;
+  padding: 6px 14px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.result:hover { background: var(--bg); }
+.result[aria-current="true"] { background: var(--mark-soft); }
+.result .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.result .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.result .tag { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.empty { padding: 20px 14px; color: var(--muted); }
+mark { background: var(--mark-soft); color: inherit; border-radius: 2px; }
+
+/* ---------- graph pane ---------- */
+.graph { position: relative; min-height: 0; min-width: 0; overflow: hidden; }
+.graph svg { width: 100%; height: 100%; display: block; cursor: grab; }
+.graph svg:active { cursor: grabbing; }
+.legend { position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 12px; max-width: calc(100% - 24px);
+  padding: 6px 10px; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: var(--r); font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); display: inline-block; }
+.legend i.ln { width: 16px; height: 0; border-radius: 0; border-top: 2px var(--s, solid) var(--muted); background: none; }
+.graph-tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+.tool { padding: 4px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); cursor: pointer; font-size: 12px; }
+.tool:hover { border-color: var(--ink); }
+.nodes circle { stroke: var(--panel); stroke-width: 1.5px; cursor: pointer; transition: opacity .2s; }
+.nodes circle.sel { stroke: var(--mark); stroke-width: 4px; }
+.links line { stroke: var(--muted); stroke-opacity: .35; transition: opacity .2s; }
+.links line.contains { stroke-opacity: .55; }
+.links line.uses { stroke-dasharray: 4 3; }
+.links line.related { stroke-dasharray: 1 3; }
+.links line.refactors, .links line.practice { stroke: var(--k-exercise); stroke-opacity: .5; }
+.links line.prereq { stroke: var(--accent); stroke-opacity: .7; stroke-width: 2px; }
+.links line.hot { stroke-opacity: .95; stroke: var(--mark); stroke-width: 2px; }
+.labels text { fill: var(--ink); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; transition: opacity .2s; }
+.labels text.big { font-weight: 700; font-size: 13px; }
+.dim { opacity: .12; }
+
+/* ---------- notebook pane ---------- */
+.detail { border-left: 1px solid var(--line); background: var(--panel); overflow-y: auto; min-height: 0; min-width: 0;
+  padding: 18px 20px 40px; display: flex; flex-direction: column; gap: 16px; }
+.crumbs { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; color: var(--muted); }
+.crumbs button { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; }
+.kind { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--c); letter-spacing: .04em; }
+.kind::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.detail h2 { margin: 4px 0 0; font-family: var(--font-display); font-size: 22px; line-height: 1.35; text-wrap: balance; }
+.detail .en { color: var(--muted); font-family: var(--font-mono); font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+.desc { white-space: pre-wrap; margin: 0; max-width: 65ch; }
+.badge { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.badge.sol { border-color: var(--k-exercise); color: var(--k-exercise); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.block-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.block-h h3 { margin: 0; font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+pre.code, pre.out { margin: 0; padding: 12px 14px; border-radius: var(--r); overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; }
+pre.code { background: var(--code-bg); border: 1px solid var(--line); }
+pre.out { background: var(--bg); border: 1px dashed var(--line); color: var(--muted); max-height: 320px; overflow-y: auto; }
+pre.code .kw { color: var(--tok-kw); font-weight: 600; } pre.code .st { color: var(--tok-str); }
+pre.code .nu { color: var(--tok-num); } pre.code .co { color: var(--tok-com); font-style: italic; } pre.code .fn { color: var(--tok-fn); }
+.copy { padding: 3px 10px; font-size: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); cursor: pointer; }
+.copy:hover { border-color: var(--ink); }
+.stdin { font-size: 12px; color: var(--muted); }
+.stdin code { font-family: var(--font-mono); background: var(--bg); padding: 0 4px; border-radius: 3px; }
+.rels { display: grid; gap: 10px; }
+.rel h4 { margin: 0 0 4px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.rel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.rel button { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; cursor: pointer; font-size: 12.5px; }
+.rel button:hover { border-color: var(--c); }
+.rel button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.refs { margin: 0; padding-left: 18px; font-size: 13px; overflow-wrap: anywhere; }
+.cli { font-size: 12px; color: var(--muted); }
+.cli code { font-family: var(--font-mono); }
+
+@media (max-width: 1100px) { .app { grid-template-columns: 260px minmax(0, 1fr) 380px; } }
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  .app { display: flex; flex-direction: column; height: auto; }
+  .index { border-right: 0; border-bottom: 1px solid var(--line); }
+  .results { max-height: 240px; }
+  .graph { height: 60vh; min-height: 340px; border-bottom: 1px solid var(--line); }
+  .detail { border-left: 0; overflow: visible; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .searchbox, .result, .results .group { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  header.top .stats { margin-left: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1>Python <span>知識圖譜</span></h1>
+    <div class="sub">PyML Ch01–Ch05 · 環境建置 → 資料型別 → 流程控制 → 序列 → 集合與字典</div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <aside class="index" aria-label="搜尋與篩選">
+    <div class="searchbox">
+      <input id="q" type="search" placeholder="搜尋：切片、GCD、dict、for-else、Word Count…" autocomplete="off" aria-label="搜尋知識點">
+      <div class="filter-label">類型</div>
+      <div class="chips" id="kindChips"></div>
+      <div class="filter-label">章節</div>
+      <div class="chips" id="chapChips"></div>
+      <label class="chip" style="cursor:pointer"><input id="codeOnly" type="checkbox" style="margin:0"> 只顯示有程式碼</label>
+    </div>
+    <div class="results" id="results" role="list"></div>
+  </aside>
+
+  <main class="graph" id="graph" aria-label="知識圖譜">
+    <div class="graph-tools">
+      <button class="tool" id="fitBtn" type="button">全部顯示</button>
+      <button class="tool" id="labelBtn" type="button" aria-pressed="false">顯示所有標籤</button>
+    </div>
+    <div class="legend" id="legend"></div>
+  </main>
+
+  <section class="detail" id="detail" aria-live="polite"></section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+const KG = /*__KG_DATA__*/null;
+const KIND_ORDER = ["chapter", "section", "concept", "function", "example", "exercise"];
+const KIND_LABEL = KG.meta.kinds, REL_LABEL = KG.meta.relations;
+const REL_TEXT = {   // [出邊說法, 入邊說法]
+  contains: ["包含", "屬於"], uses: ["使用到", "被這些使用"], related: ["相關", "相關"],
+  refactors: ["改寫自", "被改寫為"], practice: ["練習的對象", "練習題"], prereq: ["之後學習", "前置知識"]
+};
+const byId = new Map(KG.nodes.map(n => [n.id, n]));
+const out = new Map(), inc = new Map();
+KG.nodes.forEach(n => { out.set(n.id, []); inc.set(n.id, []); });
+KG.edges.forEach(e => { out.get(e.source).push(e); inc.get(e.target).push(e); });
+const parentOf = new Map(KG.edges.filter(e => e.rel === "contains").map(e => [e.target, e.source]));
+const kindColor = k => `var(--k-${k})`;
+const RADIUS = { root: 16, chapter: 13, section: 9, concept: 7, function: 6.5, example: 6.5, exercise: 6 };
+
+const state = { q: "", kinds: new Set(KIND_ORDER), chaps: new Set([1, 2, 3, 4, 5]), codeOnly: false, sel: null, allLabels: false };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+/* ---------- stats & filters ---------- */
+const nCode = KG.nodes.filter(n => n.code).length;
+$("stats").textContent = `${KG.nodes.length} 個知識點 · ${KG.edges.length} 條關係 · ${nCode} 段程式`;
+KIND_ORDER.forEach(k => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", "true"); b.style.setProperty("--c", kindColor(k));
+  b.innerHTML = `<span class="dot"></span>${KIND_LABEL[k]}`;
+  b.onclick = () => { toggle(state.kinds, k, b); refresh(); };
+  $("kindChips").append(b);
+});
+[1, 2, 3, 4, 5].forEach(c => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", "true"); b.textContent = "Ch0" + c;
+  b.onclick = () => { toggle(state.chaps, c, b); refresh(); };
+  $("chapChips").append(b);
+});
+function toggle(set, v, b) { set.has(v) ? set.delete(v) : set.add(v); b.setAttribute("aria-pressed", set.has(v)); }
+$("q").addEventListener("input", e => { state.q = e.target.value.trim(); refresh(); });
+$("codeOnly").addEventListener("change", e => { state.codeOnly = e.target.checked; refresh(); });
+
+/* ---------- search ---------- */
+function score(n, terms) {
+  if (!terms.length) return 1;
+  const fields = [[n.label, 6], [n.en, 4], [(n.tags || []).join(" "), 4], [n.id, 3], [n.desc, 2], [n.code, 1]];
+  let total = 0;
+  for (const t of terms) {
+    let s = 0;
+    for (const [f, w] of fields) if (f && f.toLowerCase().includes(t)) s += w;
+    if (!s) return 0;
+    total += s;
+  }
+  return total;
+}
+function visible(n) {
+  if (n.kind === "root") return !state.q;
+  return state.kinds.has(n.kind) && state.chaps.has(n.chapter) && (!state.codeOnly || n.code);
+}
+function matches() {
+  const terms = state.q.toLowerCase().split(/\s+/).filter(Boolean);
+  return KG.nodes.map(n => [n, visible(n) ? score(n, terms) : 0]).filter(([, s]) => s > 0);
+}
+function hi(text) {
+  let h = esc(text);
+  state.q.split(/\s+/).filter(Boolean).forEach(t => {
+    const re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    h = h.replace(re, m => `<mark>${m}</mark>`);
+  });
+  return h;
+}
+function renderResults(list) {
+  const box = $("results"); box.innerHTML = "";
+  if (!list.length) { box.innerHTML = `<div class="empty">找不到「${esc(state.q)}」。試試其他關鍵字，或放寬上方的類型與章節篩選。</div>`; return; }
+  const sorted = state.q ? list.sort((a, b) => b[1] - a[1]) : list;
+  let lastCh = null;
+  for (const [n] of sorted) {
+    if (!state.q && n.chapter !== lastCh) {
+      lastCh = n.chapter;
+      const g = document.createElement("div"); g.className = "group";
+      g.textContent = n.chapter ? byId.get("ch" + n.chapter).label : "總覽"; box.append(g);
+    }
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "result"; b.setAttribute("role", "listitem"); b.dataset.id = n.id;
+    b.style.setProperty("--c", kindColor(n.kind));
+    if (state.sel === n.id) b.setAttribute("aria-current", "true");
+    b.innerHTML = `<span class="dot"></span><span class="name">${hi(n.label)}</span><span class="tag">${n.code ? "py" : ""}</span>`;
+    b.onclick = () => { select(n.id, true); if (matchMedia("(max-width: 860px)").matches) $("detail").scrollIntoView({ block: "start" }); };
+    box.append(b);
+  }
+}
+
+/* ---------- graph (若 D3 無法載入，仍可使用搜尋與內容面板) ---------- */
+const HAS_D3 = typeof d3 !== "undefined";
+let matchIds = new Set(KG.nodes.map(n => n.id));
+let svg, zoomG, linkG, nodeG, labelG, simNodes, simLinks, sim, link, node, label, zoom;
+const chapAnchor = c => { if (!c) return [0, 0]; const a = -Math.PI / 2 + (c - 1) * 2 * Math.PI / 5; return [Math.cos(a) * 330, Math.sin(a) * 330]; };
+if (HAS_D3) {
+svg = d3.select("#graph").insert("svg", ":first-child").attr("role", "img").attr("aria-label", "知識點關係圖");
+zoomG = svg.append("g");
+linkG = zoomG.append("g").attr("class", "links");
+nodeG = zoomG.append("g").attr("class", "nodes");
+labelG = zoomG.append("g").attr("class", "labels");
+simNodes = KG.nodes.map(n => ({ ...n }));
+simLinks = KG.edges.map(e => ({ ...e }));
+const 
+sim = d3.forceSimulation(simNodes)
+  .force("link", d3.forceLink(simLinks).id(d => d.id)
+    .distance(l => l.rel === "contains" ? (l.source.kind === "root" ? 230 : 46) : 90)
+    .strength(l => l.rel === "contains" ? .9 : .06))
+  .force("charge", d3.forceManyBody().strength(d => d.kind === "chapter" ? -500 : -120))
+  .force("collide", d3.forceCollide(d => RADIUS[d.kind] + 6))
+  .force("x", d3.forceX(d => chapAnchor(d.chapter)[0]).strength(d => d.kind === "root" ? 1 : .12))
+  .force("y", d3.forceY(d => chapAnchor(d.chapter)[1]).strength(d => d.kind === "root" ? 1 : .12))
+  .stop();
+for (let i = 0; i < 400; i++) sim.tick();   // 預先排版，畫面一載入就是完成狀態
+
+link = linkG.selectAll("line").data(simLinks).join("line")
+  .attr("class", d => d.rel)
+  .attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+node = nodeG.selectAll("circle").data(simNodes).join("circle")
+  .attr("r", d => RADIUS[d.kind]).attr("fill", d => kindColor(d.kind)).attr("cx", d => d.x).attr("cy", d => d.y)
+  .on("click", (e, d) => select(d.id, true));
+node.append("title").text(d => d.label);
+label = labelG.selectAll("text").data(simNodes).join("text")
+  .attr("class", d => ["root", "chapter"].includes(d.kind) ? "big" : "")
+  .attr("x", d => d.x + RADIUS[d.kind] + 3).attr("y", d => d.y + 4).text(d => d.label);
+
+zoom = d3.zoom().scaleExtent([.2, 4]).on("zoom", e => { zoomG.attr("transform", e.transform); state.k = e.transform.k; paint(); });
+svg.call(zoom).on("dblclick.zoom", null);
+} else {
+  $("graph").insertAdjacentHTML("afterbegin", `<div class="empty" style="padding:24px">關係圖需要連線載入 D3 函式庫。搜尋、內容與程式碼仍可正常使用。</div>`);
+  $("graph").querySelector(".graph-tools").hidden = true;
+}
+function fit(ids, dur = 600) {
+  if (!HAS_D3) return;
+  const pts = simNodes.filter(n => !ids || ids.has(n.id));
+  if (!pts.length) return;
+  const box = $("graph").getBoundingClientRect();
+  const [x0, x1] = d3.extent(pts, d => d.x), [y0, y1] = d3.extent(pts, d => d.y);
+  const w = Math.max(x1 - x0, 120) + 160, h = Math.max(y1 - y0, 120) + 120;
+  const k = Math.min(2.2, Math.min(box.width / w, box.height / h));
+  const t = d3.zoomIdentity.translate(box.width / 2, box.height / 2).scale(k).translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  (reduce ? svg : svg.transition().duration(dur)).call(zoom.transform, t);
+}
+$("fitBtn").onclick = () => fit(null);
+$("labelBtn").onclick = e => { state.allLabels = !state.allLabels; e.target.setAttribute("aria-pressed", state.allLabels); e.target.textContent = state.allLabels ? "精簡標籤" : "顯示所有標籤"; paint(); };
+
+function paint() {
+  if (!HAS_D3) return;
+  const sel = state.sel, nb = new Set();
+  if (sel) { nb.add(sel); out.get(sel).forEach(e => nb.add(e.target)); inc.get(sel).forEach(e => nb.add(e.source)); }
+  const filtering = state.q || state.kinds.size < KIND_ORDER.length || state.chaps.size < 5 || state.codeOnly;
+  const lit = d => sel ? nb.has(d.id) : (!filtering || matchIds.has(d.id));
+  node.classed("dim", d => !lit(d)).classed("sel", d => d.id === sel);
+  link.classed("dim", d => sel ? !(d.source.id === sel || d.target.id === sel) : filtering && !(matchIds.has(d.source.id) && matchIds.has(d.target.id)))
+      .classed("hot", d => sel && (d.source.id === sel || d.target.id === sel));
+  const k = state.k || 1;
+  label.attr("opacity", d => {
+    const base = state.allLabels || ["root", "chapter"].includes(d.kind) || (d.kind === "section" && k > .7) || k > 1.6 || (sel && nb.has(d.id)) || (filtering && state.q && matchIds.has(d.id));
+    return !base ? 0 : lit(d) ? 1 : .15;
+  });
+}
+
+/* legend */
+$("legend").innerHTML = KIND_ORDER.map(k => `<span style="--c:${kindColor(k)}"><i></i>${KIND_LABEL[k]}</span>`).join("") +
+  `<span><i class="ln"></i>包含</span><span><i class="ln" style="--s:dashed"></i>使用</span><span><i class="ln" style="--s:dotted"></i>相關</span>`;
+
+/* ---------- detail ---------- */
+const PY_KW = new Set("False None True and as assert break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+const PY_FN = new Set("print input len range int float str list tuple set dict frozenset bytes enumerate zip sorted sum abs round max min all any type id isinstance repr format".split(" "));
+function highlight(code, lang) {
+  if (lang !== "python") return esc(code).replace(/^(#.*)$/gm, '<span class="co">$1</span>');
+  const re = /(#[^\n]*)|([rbf]?(?:"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'))|(\b\d+(?:\.\d+)?(?:e-?\d+)?j?\b)|([A-Za-z_]\w*)/g;
+  let html = "", last = 0, m;
+  while ((m = re.exec(code))) {
+    html += esc(code.slice(last, m.index)); last = re.lastIndex;
+    if (m[1]) html += `<span class="co">${esc(m[1])}</span>`;
+    else if (m[2]) html += `<span class="st">${esc(m[2])}</span>`;
+    else if (m[3]) html += `<span class="nu">${esc(m[3])}</span>`;
+    else if (PY_KW.has(m[4])) html += `<span class="kw">${m[4]}</span>`;
+    else if (PY_FN.has(m[4])) html += `<span class="fn">${m[4]}</span>`;
+    else html += esc(m[4]);
+  }
+  return html + esc(code.slice(last));
+}
+function relButtons(ids) {
+  return ids.map(id => { const n = byId.get(id); return `<li><button type="button" data-go="${id}" style="--c:${kindColor(n.kind)}"><span class="dot"></span>${esc(n.label)}</button></li>`; }).join("");
+}
+function crumbs(id) {
+  const chain = []; let p = parentOf.get(id);
+  while (p) { chain.unshift(p); p = parentOf.get(p); }
+  return chain.map(c => `<button type="button" data-go="${c}">${esc(byId.get(c).label)}</button>`).join(" › ");
+}
+function renderDetail(id) {
+  const n = byId.get(id), d = $("detail");
+  const groups = [];
+  for (const [rel, [o, i]] of Object.entries(REL_TEXT)) {
+    const outs = out.get(id).filter(e => e.rel === rel).map(e => e.target);
+    const ins = inc.get(id).filter(e => e.rel === rel).map(e => e.source);
+    if (rel === "contains") { if (outs.length) groups.push([o, outs]); continue; }
+    if (rel === "related") { const all = [...new Set([...outs, ...ins])]; if (all.length) groups.push([o, all]); continue; }
+    if (outs.length) groups.push([o, outs]);
+    if (ins.length) groups.push([i, ins]);
+  }
+  d.innerHTML = `
+    <div class="crumbs">${crumbs(id)}</div>
+    <div>
+      <div class="kind" style="--c:${kindColor(n.kind)}">${KIND_LABEL[n.kind]}${n.chapter ? " · Ch0" + n.chapter : ""}</div>
+      <h2>${esc(n.label)}</h2>
+      ${n.en ? `<div class="en">${esc(n.en)}</div>` : ""}
+    </div>
+    ${n.desc ? `<p class="desc">${esc(n.desc)}</p>` : ""}
+    ${(n.tags.length || n.code) ? `<div class="tags">${n.code ? `<span class="badge ${n.source === "solution" ? "sol" : ""}">${n.source === "solution" ? "參考解答 (非講義原文)" : "講義程式"}</span>` : ""}${n.tags.map(t => `<span class="badge">${esc(t)}</span>`).join("")}</div>` : ""}
+    ${n.code ? `<div>
+      <div class="block-h"><h3>程式碼 ${n.lang === "bash" ? "(終端機指令)" : "(Python)"}</h3><button class="copy" type="button" id="copyBtn">複製程式</button></div>
+      <pre class="code"><code id="codeText">${highlight(n.code, n.lang)}</code></pre>
+      ${n.stdin ? `<div class="stdin" style="margin-top:6px">需要 input()，範例輸入：${n.stdin.map(s => `<code>${esc(s)}</code>`).join(" ")}</div>` : ""}
+    </div>` : ""}
+    ${n.run_output ? `<div><div class="block-h"><h3>執行結果${n.stdin ? " (使用範例輸入)" : ""}</h3></div><pre class="out">${esc(n.run_output)}</pre></div>` : ""}
+    ${groups.length ? `<div class="rels">${groups.map(([t, ids]) => `<div class="rel"><h4>${t}</h4><ul>${relButtons(ids)}</ul></div>`).join("")}</div>` : ""}
+    ${n.refs.length ? `<div><div class="block-h"><h3>參考資料</h3></div><ul class="refs">${n.refs.map(r => `<li><a href="${esc(r)}" target="_blank" rel="noopener">${esc(r)}</a></li>`).join("")}</ul></div>` : ""}
+    ${n.code && n.lang === "python" ? `<div class="cli">終端機：<code>python kg.py run ${esc(n.id)}</code> 執行，或 <code>python kg.py code ${esc(n.id)} &gt; ${esc(n.id)}.py</code> 存檔</div>` : ""}
+  `;
+  d.querySelectorAll("[data-go]").forEach(b => b.onclick = () => select(b.dataset.go, true));
+  const cb = $("copyBtn");
+  if (cb) cb.onclick = async () => {
+    try { await navigator.clipboard.writeText(n.code); cb.textContent = "已複製"; }
+    catch { const r = document.createRange(); r.selectNodeContents($("codeText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); cb.textContent = "已選取，請按 Ctrl+C"; }
+    setTimeout(() => cb.textContent = "複製程式", 1800);
+  };
+  d.scrollTop = 0;
+}
+
+function select(id, focus) {
+  if (!byId.has(id)) return;
+  state.sel = id;
+  renderDetail(id);
+  document.querySelectorAll(".result").forEach(b => b.toggleAttribute("aria-current", b.dataset.id === id));
+  paint();
+  if (focus) {
+    const ids = new Set([id]); out.get(id).forEach(e => ids.add(e.target)); inc.get(id).forEach(e => ids.add(e.source));
+    fit(id === "root" ? null : ids);
+    const h = "#" + id.replace(/_/g, "-");
+    if (location.hash !== h) history.replaceState(null, "", h);
+  }
+}
+function refresh() {
+  const list = matches();
+  matchIds = new Set(list.map(([n]) => n.id));
+  renderResults(list);
+  if (state.sel && !(state.q && !matchIds.has(state.sel))) paint();
+  else { state.sel = null; paint(); }
+  if (state.q && list.length) {
+    const top = list.sort((a, b) => b[1] - a[1])[0][0];
+    renderDetail(top.id);
+    state.sel = null; paint();
+    clearTimeout(refresh.t); refresh.t = setTimeout(() => fit(matchIds), 350);
+  }
+}
+function fromHash() {
+  const id = decodeURIComponent(location.hash.slice(1)).replace(/-/g, "_");
+  return byId.has(id) ? id : null;
+}
+window.addEventListener("hashchange", () => { const id = fromHash(); if (id && id !== state.sel) select(id, true); });
+
+refresh();
+requestAnimationFrame(() => { fit(null, 0); select(fromHash() || "root", !!fromHash()); });
+</script>
